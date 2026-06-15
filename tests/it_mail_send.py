@@ -124,9 +124,34 @@ async def run_tests() -> None:
         assert result_reply.get("status") == "sent", f"Oczekiwano status=sent: {result_reply}"
         print(f"  OK: reply wysłany do {result_reply.get('to')}, e2e={result_reply.get('e2e')}")
 
+    # --- Test 3: tuta_mail_send Secure External ---
+    print("\n=== Test 3: tuta_mail_send → Secure External ===")
+
+    SE_PASSWORD = os.environ.get("TUTAMCP_TEST_SE_PASSWORD", "testhaslo123")
+
+    async def send_secure_external(client, session):
+        mgk = await client.get_mail_group_key(session)
+        to_list = [_parse_address(OWNER_EMAIL)]
+        return await _send_core(
+            client, session, mgk,
+            subject="[tutamcp test] Secure External",
+            body_text="Ten mail jest zaszyfrowany hasłem przez Secure External.",
+            from_addr=session.user_email, from_name="tutamcp bot",
+            to_list=to_list, cc_list=[], bcc_list=[],
+            external_password=SE_PASSWORD,
+        )
+
+    result_se = await sm.call(send_secure_external)
+    print(f"  Wynik: {result_se}")
+    assert result_se.get("status") == "sent", f"Oczekiwano status=sent: {result_se}"
+    assert result_se.get("secure_external") is True, f"Oczekiwano secure_external=True: {result_se}"
+    assert result_se.get("e2e") is False, f"Oczekiwano e2e=False: {result_se}"
+    print(f"  OK: Secure External wysłany, hasło={SE_PASSWORD!r}")
+    print(f"  Sprawdź skrzynkę {OWNER_EMAIL} — powinien być mail z linkiem do odbioru")
+
     await sm.close()
     print("\n=== Wszystkie testy PASSED ===")
-    print(f"\nSprawdź skrzynkę {OWNER_EMAIL} — powinny być 2 maile od your@tuta.com")
+    print(f"\nSprawdź skrzynkę {OWNER_EMAIL} — powinny być 3 maile (non-E2E, reply, Secure External)")
 
 
 if __name__ == "__main__":

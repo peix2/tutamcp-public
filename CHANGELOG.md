@@ -1,5 +1,10 @@
 # Changelog
 
+## v0.1.3 (2026-06-15)
+
+- Added `external_password` parameter to `tuta_mail_send` for Secure External delivery — recipients get a link and enter the password to read the email
+- Removed hardcoded `TUTAPROXY_PATH` fallback — path must be set explicitly in MCP config
+
 ## v0.1.2 (2026-06-13)
 
 - Fixed `tuta_mail_move` to custom (user-created) folders — requires tutaproxy ≥ 1.3.10

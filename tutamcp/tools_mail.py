@@ -420,15 +420,82 @@ async def _send_core(
     cc_list: list[tuple[str, str]],
     bcc_list: list[tuple[str, str]],
     attachment_paths: "list[str] | None" = None,
+    external_password: "str | None" = None,
 ) -> dict[str, Any]:
     """
     Rdzeń wysyłki: wykrywa E2E, uploaduje załączniki, tworzy draft, wysyła.
     Wzorzec z tuta/smtp_server.py (patrz _do_send).
+
+    external_password — jeśli podane, wysyła jako Secure External (hasło do odbioru
+    przez link); pomija detekcję E2E, wszyscy odbiorcy dostają to samo hasło.
     """
     import mimetypes
 
     all_addresses = [a for _, a in to_list + cc_list + bcc_list]
     body_html = f"<html><body><p>{body_text.replace(chr(10), '<br>')}</p></body></html>"
+
+    if external_password is not None:
+        # Secure External: draft bez E2E, wysyłka przez send_draft_secure_external
+        logger.info("send_core: Secure External to=%s", all_addresses)
+
+        draft_attachments: list[dict] = []
+        file_session_keys: list[bytes] = []
+        for path in (attachment_paths or []):
+            path = os.path.abspath(path)
+            if not os.path.isfile(path):
+                return {"error": f"Plik załącznika nie istnieje: {path!r}"}
+            filename = os.path.basename(path)
+            mime = mimetypes.guess_type(filename)[0] or "application/octet-stream"
+            with open(path, "rb") as f:
+                data = f.read()
+            draft_att, file_sk = await client.upload_attachment(
+                session, mail_group_key, data, filename, mime
+            )
+            draft_attachments.append(draft_att)
+            file_session_keys.append(file_sk)
+
+        draft_list_id, draft_elem_id, sk = await client.create_draft(
+            session=session,
+            subject=subject,
+            body_html=body_html,
+            from_addr=from_addr,
+            from_name=from_name,
+            to_recipients=to_list,
+            cc_recipients=cc_list,
+            bcc_recipients=bcc_list,
+            mail_group_key=mail_group_key,
+            confidential=False,
+            attachments=draft_attachments or None,
+        )
+
+        attachment_keys: list[tuple[str, str, bytes]] = []
+        if draft_attachments:
+            file_ids = await client.get_draft_file_ids(session, draft_list_id, draft_elem_id)
+            for i, file_sk in enumerate(file_session_keys):
+                if i < len(file_ids):
+                    attachment_keys.append((file_ids[i][0], file_ids[i][1], file_sk))
+
+        se_recipients = [(addr, external_password) for addr in all_addresses]
+        await client.send_draft_secure_external(
+            session=session,
+            draft_list_id=draft_list_id,
+            draft_elem_id=draft_elem_id,
+            session_key=sk,
+            mail_group_key=mail_group_key,
+            recipients=se_recipients,
+            attachment_keys=attachment_keys or None,
+            sender_name=from_name or "",
+        )
+
+        return {
+            "status": "sent",
+            "to": [f"{n} <{a}>" if n else a for n, a in to_list],
+            "cc": [f"{n} <{a}>" if n else a for n, a in cc_list],
+            "subject": subject,
+            "e2e": False,
+            "secure_external": True,
+            "draft_id": draft_elem_id,
+        }
 
     # wykryj E2E
     is_e2e = True
@@ -443,8 +510,8 @@ async def _send_core(
     logger.info("send_core: E2E=%s to=%s", is_e2e, all_addresses)
 
     # upload załączników
-    draft_attachments: list[dict] = []
-    file_session_keys: list[bytes] = []
+    draft_attachments = []
+    file_session_keys = []
     for path in (attachment_paths or []):
         path = os.path.abspath(path)
         if not os.path.isfile(path):
@@ -474,7 +541,7 @@ async def _send_core(
     )
 
     # pobierz IDs plików przypisane przez serwer
-    attachment_keys: list[tuple[str, str, bytes]] = []
+    attachment_keys = []
     if draft_attachments:
         file_ids = await client.get_draft_file_ids(session, draft_list_id, draft_elem_id)
         for i, file_sk in enumerate(file_session_keys):
@@ -844,6 +911,7 @@ def register_mail_tools(mcp, cfg, sm) -> None:
             cc: Optional[list[str]] = None,
             bcc: Optional[list[str]] = None,
             attachment_paths: Optional[list[str]] = None,
+            external_password: Optional[str] = None,
         ) -> dict[str, Any]:
             """
             Sends a new email to arbitrary recipients.
@@ -855,8 +923,13 @@ def register_mail_tools(mcp, cfg, sm) -> None:
                 cc: Optional CC recipients.
                 bcc: Optional BCC recipients.
                 attachment_paths: Optional list of local file paths to attach.
+                external_password: If set, sends as Secure External — recipients receive
+                    a link and must enter this password to read the email. Use for
+                    sensitive messages to non-Tuta addresses. All recipients share the
+                    same password. Cannot be combined with Tuta-to-Tuta E2E (if any
+                    recipient has a Tuta key, prefer omitting this parameter).
 
-            Returns: status, to, cc, subject, e2e (bool).
+            Returns: status, to, cc, subject, e2e (bool), secure_external (bool).
 
             POLICY NOTES:
             - Only send emails on explicit user request.
@@ -876,6 +949,7 @@ def register_mail_tools(mcp, cfg, sm) -> None:
                     from_addr=session.user_email, from_name="",
                     to_list=to_list, cc_list=cc_list, bcc_list=bcc_list,
                     attachment_paths=attachment_paths,
+                    external_password=external_password,
                 )
 
             result, err = await _safe_call(sm, _fetch)
