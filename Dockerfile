@@ -1,7 +1,7 @@
 # Etap 1: pobierz pakiet tuta/ z tutaproxy-public (tylko do buildu)
 FROM python:3.11-slim AS builder
 
-ARG TUTAPROXY_REF=v1.3.10
+ARG TUTAPROXY_REF=v1.3.12
 
 RUN apt-get update && apt-get install -y --no-install-recommends git \
     && rm -rf /var/lib/apt/lists/*
