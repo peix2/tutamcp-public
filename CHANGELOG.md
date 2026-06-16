@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.1.4 (2026-06-16)
+
+- Fixed `tuta_mail_list`: added `unread` parameter (`bool|None`) to filter emails by read status — enables idempotent autonomous polling (`unread=True` skips already-processed emails)
+
 ## v0.1.3 (2026-06-15)
 
 - Added `external_password` parameter to `tuta_mail_send` for Secure External delivery — recipients get a link and enter the password to read the email

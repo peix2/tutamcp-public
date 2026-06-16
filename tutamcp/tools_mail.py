@@ -766,6 +766,7 @@ def register_mail_tools(mcp, cfg, sm) -> None:
         limit: int = 20,
         before_id: Optional[str] = None,
         only_trusted: bool = False,
+        unread: Optional[bool] = None,
     ) -> list[dict[str, Any]]:
         """
         Lists emails in a folder (lightweight — no body fetched).
@@ -776,6 +777,9 @@ def register_mail_tools(mcp, cfg, sm) -> None:
             before_id: Pagination — only return emails older than this element ID.
             only_trusted: If True, only return emails from trusted senders.
               Useful for autonomous polling: "show me unread from trusted senders".
+            unread: If True, return only unread emails. If False, only read emails.
+              None (default) returns all. Use True for autonomous polling to avoid
+              reprocessing already-handled emails.
 
         Returns list of emails with: id, list_id, subject, from, to, date (ISO 8601),
         unread (bool), has_attachments (bool), e2e (bool), trusted_sender (bool).
@@ -819,6 +823,9 @@ def register_mail_tools(mcp, cfg, sm) -> None:
 
             if only_trusted:
                 summaries = [s for s in summaries if s.get("trusted_sender")]
+
+            if unread is not None:
+                summaries = [s for s in summaries if s.get("unread") == unread]
 
             return summaries
 
