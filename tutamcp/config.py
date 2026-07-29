@@ -53,6 +53,8 @@ class Config:
 
     email: Optional[str]
     password: Optional[str]
+    # sekret TOTP (base32) — tylko dla kont z 2FA; mostkowany do os.environ przed login
+    totp_secret: Optional[str]
 
     download_dir: str
     tutaproxy_path: str
@@ -112,6 +114,7 @@ def load_config(env: Optional[dict[str, str]] = None) -> Config:
     # dane dostępowe: najpierw env, potem plik credentials
     email: Optional[str] = e.get("TUTA_EMAIL") or None
     password: Optional[str] = e.get("TUTA_PASSWORD") or None
+    totp_secret: Optional[str] = e.get("TUTA_TOTP_SECRET") or None
 
     creds_file = e.get("TUTAMCP_CREDENTIALS_FILE", "").strip()
     if creds_file:
@@ -120,6 +123,8 @@ def load_config(env: Optional[dict[str, str]] = None) -> Config:
             email = creds["TUTA_EMAIL"]
         if "TUTA_PASSWORD" in creds:
             password = creds["TUTA_PASSWORD"]
+        if "TUTA_TOTP_SECRET" in creds:
+            totp_secret = creds["TUTA_TOTP_SECRET"]
 
     enable_mail = _parse_bool(e.get("TUTAMCP_ENABLE_MAIL", "0"))
     enable_calendar = _parse_bool(e.get("TUTAMCP_ENABLE_CALENDAR", "0"))
@@ -209,6 +214,7 @@ def load_config(env: Optional[dict[str, str]] = None) -> Config:
         trust_require_e2e=trust_require_e2e,
         email=email,
         password=password,
+        totp_secret=totp_secret,
         download_dir=download_dir,
         tutaproxy_path=tutaproxy_path,
         log_level=log_level,

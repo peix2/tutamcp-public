@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 from typing import Any, Callable, Coroutine, Optional
 
 from tuta.api import TutaAPIError, TutaClient, Session
@@ -85,6 +86,10 @@ class SessionManager:
             "Brak danych logowania w Config — SessionManager nie powinien "
             "być tworzony bez włączonego modułu"
         )
+        # tuta.api (_second_factor_auth) czyta sekret 2FA z os.environ — mostkujemy
+        # go z Config (env lub plik credentials). Tylko dla kont z włączonym TOTP.
+        if self._config.totp_secret:
+            os.environ["TUTA_TOTP_SECRET"] = self._config.totp_secret
         client = TutaClient()
         await client.__aenter__()
         try:

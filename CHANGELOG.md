@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.1.7 (2026-07-29)
+
+- Added TOTP two-factor authentication support: set `TUTA_TOTP_SECRET` (base32 secret from the Tuta app) in the credentials file or environment and tutamcp completes the second-factor challenge at login. TOTP only; U2F/WebAuthn are not supported. Enabling/disabling 2FA is done in the official Tuta app.
+- Bumped bundled tutaproxy to `v1.3.15` (`TUTAPROXY_REF`) — required for 2FA login.
+
+## v0.1.6 (2026-06-23)
+
+- Bumped bundled tutaproxy to `v1.3.13` (`TUTAPROXY_REF`) — fixes a FETCH crash on bounce (DSN) messages.
+
+## v0.1.5 (2026-06-16)
+
+- Bumped bundled tutaproxy to `v1.3.12` (`TUTAPROXY_REF`) — `delete_mails` fix.
+
 ## v0.1.4 (2026-06-16)
 
 - Fixed `tuta_mail_list`: added `unread` parameter (`bool|None`) to filter emails by read status — enables idempotent autonomous polling (`unread=True` skips already-processed emails)

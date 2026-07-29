@@ -166,6 +166,7 @@ class TestCheckFolderAccess(unittest.TestCase):
             cc_owner=False,
             email="test@example.com",
             password="secret",
+            totp_secret=None,
             download_dir="/tmp",
             tutaproxy_path="",
             log_level="INFO",

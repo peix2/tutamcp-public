@@ -39,7 +39,7 @@ except ImportError as _e:
     )
     sys.exit(1)
 
-VERSION = "0.1.4"
+VERSION = "0.1.7"
 
 logger = logging.getLogger(__name__)
 

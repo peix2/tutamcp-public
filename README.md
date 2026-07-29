@@ -14,17 +14,21 @@ cd tutamcp-public
 docker build -t tutamcp .
 ```
 
-Pin a specific tutaproxy release (default: `v1.3.10`):
+Pin a specific tutaproxy release (default: `v1.3.15`):
 
 ```bash
-docker build --build-arg TUTAPROXY_REF=v1.3.10 -t tutamcp .
+docker build --build-arg TUTAPROXY_REF=v1.3.15 -t tutamcp .
 ```
+
+> **2FA note:** logging into an account with two-factor authentication requires tutaproxy ≥ **v1.3.15**. Older refs will fail the second-factor challenge.
 
 Create a credentials file (`chmod 600`):
 
 ```
 TUTA_EMAIL=your@tuta.com
 TUTA_PASSWORD=yourpassword
+# only for accounts with 2FA enabled — base32 secret from the Tuta app (spaces ignored):
+#TUTA_TOTP_SECRET=jbsw y3dp ehpk 3pxp
 ```
 
 Register in Claude Code (`.mcp.json` or `~/.claude.json`):
@@ -113,6 +117,29 @@ Used for autonomous mail handling (e.g. a background poller that wakes Claude to
 | `TUTAMCP_MAIL_CC_OWNER` | `1` — automatically CC the owner on every outgoing mail. |
 
 `tuta_mail_list` and `tuta_mail_read` return `trusted_sender: bool` and `e2e: bool` on every message. Pass `only_trusted=True` to `tuta_mail_list` to filter to trusted senders only.
+
+### Two-factor authentication (2FA / TOTP)
+
+If the Tuta account has a second factor enabled, add its TOTP secret to your credentials so tutamcp can complete the login challenge:
+
+```
+TUTA_EMAIL=your@tuta.com
+TUTA_PASSWORD=yourpassword
+TUTA_TOTP_SECRET=jbsw y3dp ehpk 3pxp
+```
+
+- `TUTA_TOTP_SECRET` is the **base32 secret** shown by the Tuta app when you set up an authenticator (the same string behind the QR code). Spaces and letter case are ignored, so you can paste it exactly as displayed.
+- It can also be passed as a plain environment variable instead of via the credentials file. The value is bridged into the login and never logged.
+- tutamcp computes the 6-digit RFC 6238 code at login time — you do **not** register a separate authenticator app for it.
+
+| Requirement | Detail |
+|---|---|
+| tutaproxy version | ≥ **v1.3.15** (set `TUTAPROXY_REF` accordingly for Docker) |
+| Supported factor | **TOTP only.** U2F/WebAuthn hardware keys are not supported for programmatic login. |
+| Enabling/disabling 2FA | Done in the **official Tuta app** — Settings → Login → 2nd factor. tutamcp only consumes the secret; it cannot add or remove factors. |
+| Missing secret | If the account requires 2FA but `TUTA_TOTP_SECRET` is unset, login fails with a clear `set TUTA_TOTP_SECRET` error instead of hanging. |
+
+Treat the secret like a password: keep it in the `chmod 600` credentials file, out of version control.
 
 ## Tools
 
