@@ -84,7 +84,7 @@ def _decrypt_mail_key(mail_raw: dict, mail_group_key: bytes, session) -> Optiona
             mail_elem_id = mail_id[1] if isinstance(mail_id, list) and len(mail_id) > 1 else str(mail_id)
             for e in (entry.get("2048") or []):
                 if e.get("2041") == mail_elem_id:
-                    return aes_decrypt_tuta(bucket_key, base64.b64decode(e["2042"]))
+                    return aes_decrypt_tuta(bucket_key, base64.b64decode(e["2042"]), remove_padding=False)
         except Exception as e:
             logger.warning("Błąd deszyfrowania klucza maila (pole 1310 PQ): %s", e)
 
